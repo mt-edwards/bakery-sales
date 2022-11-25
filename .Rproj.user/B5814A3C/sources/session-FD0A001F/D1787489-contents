@@ -46,10 +46,9 @@ weather <- read_csv(here("data", "weather_2021.01.01-2022.10.31.csv")) %>%
 There are two available data sets. The first is the `sales` data which includes
 the time and date each product was purchased along with the quantity and unit 
 price. The second is the `weather` data which includes aggregate weather 
-variables (e.g., maximum temperature) over the period the `sales` data was 
-collected. The `sales` data suggests that there are approximately 
-`r length(unique(sales$article))` different products. The five most popular 
-products over this period are:
+variables (e.g., maximum temperature). The `sales` data suggests that there are 
+approximately `r length(unique(sales$article))` different products. The five 
+most popular products are:
 
 ```{r echo=FALSE}
 sales %>% 
@@ -82,9 +81,9 @@ sales_clean <- sales %>%
   mutate(quantity = replace_na(quantity, 0))
 ```
 
-For this project we will focus on prototyping a forecasting model of
+For this project I will focus on prototyping a forecasting model for
 Traditional Baguette demand. The following figure displays an 
-STL decomposition of the Traditional Baguette demand. It suggests non-stationary 
+STL decomposition of Traditional Baguette demand. It suggests non-stationary 
 cycle-trend (upper middle panel) and seasonal (lower middle panel) components 
 and heteroscedastic errors (lower panel). A forecasting model for Traditional 
 Baguette demand will require exogenous variables to account for the 
@@ -96,7 +95,7 @@ sales_clean %>%
   model(STL(quantity ~ trend() + season(), robust = TRUE)) %>% 
   components() %>% 
   autoplot() +
-  labs(title = "STL Decomposition of Traditional Baguette Demand", x = "Date")
+  labs(title = "STL Decomposition for Traditional Baguette Demand", x = "Date")
 ```
 
 ```{r include=FALSE}
@@ -144,10 +143,10 @@ results <- model %>%
   accuracy(data_test)
 ```
 
-The following plot displays the last six months of data for the Traditional 
+The following plot displays the last six months of data for Traditional 
 Baguette demand. The training data has a solid line and the test data has a dashed 
-line. The predictions are provided in blue with 80% and 95% confidence 
-intervals. The test data is mostly contained within the 95% confidence 
+line. The predictions are provided in blue with 80% (light blue) and 95% (dark blue) 
+confidence intervals. The test data is mostly contained within the 95% confidence 
 intervals. The predictions in the last month of the data set had a mean absolute 
 error of approximately `r round(results$MAE, 0)`.
 
@@ -163,8 +162,8 @@ model %>%
 
 ## Conclusion
 
-The prototype forecasting model for the Tradition Baguette demand is probably
+The prototype forecasting model for Tradition Baguette demand is probably
 not accurate enough for production. We suggest that any future work should 
-include extensive exploratory data analysis to gain a deeper understand the the 
+include extensive exploratory data analysis to gain a deeper understanding of the 
 mechanisms behind the non-stationary components and the hetroscedastic errors. 
 Only then will a forecasting model be accurate enough for production. 
