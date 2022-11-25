@@ -1,0 +1,29 @@
+{
+    "id": "D1787489",
+    "path": "~/Sync/Documents/projects-r/bakery-sales/bakery-sales.Rmd",
+    "project_path": "bakery-sales.Rmd",
+    "type": "r_markdown",
+    "hash": "729482268",
+    "contents": "",
+    "dirty": false,
+    "created": 1669123600644.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "98,64",
+        "scrollLine": "63",
+        "last_setup_crc32": "FD0A001Fbb338d19",
+        "ignored_words": "hetroscedastic\n"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1669288006,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1669288006289,
+    "read_only": false,
+    "read_only_alternatives": []
+}

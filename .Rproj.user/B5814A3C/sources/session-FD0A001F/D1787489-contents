@@ -1,0 +1,170 @@
+---
+title: "Bakery Sales"
+author: "Matthew Edwards"
+date: "2022-11-22"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, include=FALSE}
+library("tidyverse")
+library("tidymodels")
+library("here")
+library("janitor")
+library("ggfortify")
+library("feasts")
+library("tsibble")
+library("fable")
+```
+
+## Summary
+
+A bakery in France would like to produce the right number of products each day. 
+Too few products would result in monetary loss and too many products would
+result in food waste. The baker has noticed that product demand is
+affected by weather. Therefore to produce the right number of products for 
+each day the baker would like a forecasting model of product demand based 
+on weather.
+
+## Data
+
+```{r message=FALSE, include=FALSE}
+# read sales data
+sales <- read_csv(here("data", "bakery_sales_2021-2022.csv")) %>% 
+  clean_names()
+
+# read weather data
+weather <- read_csv(here("data", "weather_2021.01.01-2022.10.31.csv")) %>% 
+  clean_names()
+```
+
+There are two available data sets. The first is the `sales` data which includes
+the time and date each product was purchased along with the quantity and unit 
+price. The second is the `weather` data which includes aggregate weather 
+variables (e.g., maximum temperature) over the period the `sales` data was 
+collected. The `sales` data suggests that there are approximately 
+`r length(unique(sales$article))` different products. The five most popular 
+products over this period are:
+
+```{r echo=FALSE}
+sales %>% 
+  group_by(article) %>% 
+  summarise(quantity = sum(quantity)) %>% 
+  arrange(desc(quantity)) %>% 
+  mutate(
+    Article = str_to_title(article),
+    Quantity = quantity,
+    .keep = "none") %>% 
+  head(5) %>% 
+  knitr::kable()
+```
+
+```{r include=FALSE}
+sales_clean <- sales %>% 
+  filter(article == "TRADITIONAL BAGUETTE") %>% 
+  mutate(unit_price = str_replace_all(unit_price, ",", ".")) %>% 
+  mutate(unit_price = as.numeric(str_replace_all(unit_price, " €", " "))) %>% 
+  group_by(date) %>% 
+  summarise(
+    quantity = sum(quantity), 
+    unit_price = max(unit_price), # multiple prices in one day (selected max)
+    .groups = "keep"
+  ) %>% 
+  ungroup() %>% 
+  as_tsibble(index = date) %>% 
+  fill_gaps() %>% 
+  fill(unit_price) %>% 
+  mutate(quantity = replace_na(quantity, 0))
+```
+
+For this project we will focus on prototyping a forecasting model of
+Traditional Baguette demand. The following figure displays an 
+STL decomposition of the Traditional Baguette demand. It suggests non-stationary 
+cycle-trend (upper middle panel) and seasonal (lower middle panel) components 
+and heteroscedastic errors (lower panel). A forecasting model for Traditional 
+Baguette demand will require exogenous variables to account for the 
+non-stationary components. Accounting for the hetroscedastic errors is out of
+scope for this project. 
+
+```{r echo=FALSE}
+sales_clean %>% 
+  model(STL(quantity ~ trend() + season(), robust = TRUE)) %>% 
+  components() %>% 
+  autoplot() +
+  labs(title = "STL Decomposition of Traditional Baguette Demand", x = "Date")
+```
+
+```{r include=FALSE}
+weather_clean <- weather %>% 
+  mutate(
+    snow = replace_na(snow, 0),
+    wdir = replace_na(wdir, 0),
+    wspd = replace_na(wspd, 0), 
+    wpgt = replace_na(wpgt, 0),
+    pres = replace_na(pres, 0)
+  ) %>% 
+  select(-tsun)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# join data
+data <- left_join(sales_clean, weather_clean)
+data_train <- data %>% 
+  filter(date < yearmonth("2022-09"))
+data_test <- data %>% 
+  filter(date >= yearmonth("2022-09"))
+```
+
+## Model
+
+To account for the non-stationary trend-cycle component the average temperature, 
+wind speed and pressure variables where added as exogenous variables. To account
+for the non-stationary seasonal component weekly dummy variables where added as
+exogenous variables. Furthermore, the ARIMA model was used with both auto 
+regressive and moving average components to account for temporal correlation. 
+Residual diagnostics (non-included) suggest that most of the temporal 
+correlation and non-stationary components are accounted for. However, there is 
+still unaccounted for heteroscedasticity in the errors, which is out of scope. 
+
+```{r warning=FALSE, include=FALSE}
+model <- data_train %>% 
+  model(ARIMA(quantity ~ trend() + season() + tavg + wspd + pres))
+```
+
+## Results
+
+```{r echo=FALSE}
+results <- model %>%
+  forecast(new_data = data_test) %>% 
+  accuracy(data_test)
+```
+
+The following plot displays the last six months of data for the Traditional 
+Baguette demand. The training data has a solid line and the test data has a dashed 
+line. The predictions are provided in blue with 80% and 95% confidence 
+intervals. The test data is mostly contained within the 95% confidence 
+intervals. The predictions in the last month of the data set had a mean absolute 
+error of approximately `r round(results$MAE, 0)`.
+
+```{r echo=FALSE, warning=FALSE}
+model %>%
+  forecast(new_data = data_test) %>% 
+  autoplot(data_train %>% filter(date >= yearmonth("2022-04"))) + 
+  geom_line(data = data_test, aes(x = date, y = quantity), linetype = "dashed") +
+  scale_x_date(date_breaks = "1 months", date_labels = "%b") +
+  labs(x = "Date (2022)", y = "Quantity", title = "One Month Forecasts for Traditional Baguette Demand") +
+  theme(legend.position = "non")
+```
+
+## Conclusion
+
+The prototype forecasting model for the Tradition Baguette demand is probably
+not accurate enough for production. We suggest that any future work should 
+include extensive exploratory data analysis to gain a deeper understand the the 
+mechanisms behind the non-stationary components and the hetroscedastic errors. 
+Only then will a forecasting model be accurate enough for production. 

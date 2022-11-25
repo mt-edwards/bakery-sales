@@ -1,0 +1,7 @@
+"0","# read sales data"
+"0","sales <- read_csv(here(""data"", ""bakery_sales_2021-2022.csv"")) %>% "
+"0","  clean_names()"
+"0",""
+"0","# read weather data"
+"0","weather <- read_csv(here(""data"", ""weather_2021.01.01-2022.10.31.csv"")) %>% "
+"0","  clean_names()"
